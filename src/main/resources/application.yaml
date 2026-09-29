@@ -10,6 +10,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
 breeze:
+  observability:
+    instance-id: ${BREEZE_INSTANCE_ID:local}
   clerk:
     issuer-uri: ${CLERK_ISSUER_URI}
     jwk-set-uri: ${CLERK_JWK_SET_URI}
