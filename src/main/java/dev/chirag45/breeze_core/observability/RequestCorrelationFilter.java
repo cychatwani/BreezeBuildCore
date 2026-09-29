@@ -49,6 +49,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         MDC.put(HTTP_METHOD_MDC_KEY, request.getMethod());
         MDC.put(HTTP_PATH_MDC_KEY, request.getRequestURI());
 
+        log.trace("request_mdc_initialized");
         log.info("http_request_started");
 
         try {
@@ -61,6 +62,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             MDC.put(REQUEST_DURATION_MS_MDC_KEY, Long.toString(durationMs));
 
             log.info("http_request_completed");
+            log.trace("request_mdc_clearing");
             MDC.clear();
         }
     }

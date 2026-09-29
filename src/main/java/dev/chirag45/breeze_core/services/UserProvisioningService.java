@@ -4,6 +4,8 @@ import com.github.f4b6a3.uuid.UuidCreator;
 import dev.chirag45.breeze_core.entities.UserEntity;
 import dev.chirag45.breeze_core.repository.UserRepository;
 import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -17,6 +19,7 @@ import java.util.UUID;
 public class UserProvisioningService {
 
     private static final int MAX_ID_GENERATION_ATTEMPTS = 3;
+    private static final Logger log = LoggerFactory.getLogger(UserProvisioningService.class);
 
     private final UserRepository userRepository;
     private final TransactionTemplate transactionTemplate;
@@ -34,14 +37,21 @@ public class UserProvisioningService {
             throw new IllegalArgumentException("Clerk JWT subject must be present.");
         }
 
+        log.info("user_provisioning_started");
+
         DataIntegrityViolationException lastPrimaryKeyViolation = null;
 
         for (int attempt = 1; attempt <= MAX_ID_GENERATION_ATTEMPTS; attempt++) {
+            log.trace("user_provisioning_attempt_started attempt={}", attempt);
             UUID candidateUserId = UuidCreator.getTimeOrderedEpoch();
 
             try {
                 return Objects.requireNonNull(transactionTemplate.execute(status -> {
+                    log.trace("user_provisioning_transaction_started");
                     userRepository.upsertByClerkUserId(candidateUserId, clerkUserId);
+
+                    log.debug("user_provisioning_upsert_completed");
+                    log.trace("user_provisioning_user_lookup_started");
 
                     return userRepository.findByClerkUserId(clerkUserId)
                             .orElseThrow(() -> new IllegalStateException(
@@ -50,9 +60,14 @@ public class UserProvisioningService {
                 }));
             } catch (DataIntegrityViolationException exception) {
                 if (!isUsersPrimaryKeyViolation(exception)) {
+                    log.warn(
+                            "user_provisioning_data_integrity_failure exceptionType={}",
+                            exception.getClass().getSimpleName()
+                    );
                     throw exception;
                 }
 
+                log.warn("user_provisioning_primary_key_collision attempt={}", attempt);
                 lastPrimaryKeyViolation = exception;
             }
         }

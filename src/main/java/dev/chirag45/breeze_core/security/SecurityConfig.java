@@ -2,6 +2,8 @@ package dev.chirag45.breeze_core.security;
 
 import dev.chirag45.breeze_core.observability.RequestCorrelationFilter;
 import dev.chirag45.breeze_core.observability.AuthenticatedUserMdcFilter;
+import dev.chirag45.breeze_core.exception.ApiAccessDeniedHandler;
+import dev.chirag45.breeze_core.exception.ApiAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +39,9 @@ public class SecurityConfig {
             HttpSecurity http,
             CoreUserProvisioningFilter coreUserProvisioningFilter,
             RequestCorrelationFilter requestCorrelationFilter,
-            AuthenticatedUserMdcFilter authenticatedUserMdcFilter
+            AuthenticatedUserMdcFilter authenticatedUserMdcFilter,
+            ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
+            ApiAccessDeniedHandler apiAccessDeniedHandler
     ) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -47,7 +51,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .accessDeniedHandler(apiAccessDeniedHandler)
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .jwt(Customizer.withDefaults())
+                )
                 .addFilterAfter(requestCorrelationFilter, SecurityContextHolderFilter.class)
                 .addFilterAfter(authenticatedUserMdcFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(coreUserProvisioningFilter, AuthenticatedUserMdcFilter.class)
