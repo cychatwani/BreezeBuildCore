@@ -1,5 +1,7 @@
 package dev.chirag45.breeze_core.security;
 
+import dev.chirag45.breeze_core.observability.RequestCorrelationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +20,7 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -31,7 +34,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            CoreUserProvisioningFilter coreUserProvisioningFilter
+            CoreUserProvisioningFilter coreUserProvisioningFilter,
+            RequestCorrelationFilter requestCorrelationFilter
     ) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -42,8 +46,16 @@ public class SecurityConfig {
                         .anyRequest().permitAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .addFilterAfter(requestCorrelationFilter, SecurityContextHolderFilter.class)
                 .addFilterAfter(coreUserProvisioningFilter, BearerTokenAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public RequestCorrelationFilter requestCorrelationFilter(
+            @Value("${breeze.observability.instance-id}") String instanceId
+    ) {
+        return new RequestCorrelationFilter(instanceId);
     }
 
     @Bean
