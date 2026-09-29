@@ -1,0 +1,15 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  file:
+    name: logs/breeze-core-dev.log
+  threshold:
+    console: OFF
+  structured:
+    format:
+      file: ecs
+  level:
+    dev.chirag45.breeze_core: DEBUG

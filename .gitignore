@@ -43,3 +43,4 @@ out/
 # Local New Relic Java agent files
 /observability/newrelic/newrelic.jar
 /observability/newrelic/logs/
+/logs/

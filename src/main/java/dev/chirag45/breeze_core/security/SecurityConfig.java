@@ -1,6 +1,7 @@
 package dev.chirag45.breeze_core.security;
 
 import dev.chirag45.breeze_core.observability.RequestCorrelationFilter;
+import dev.chirag45.breeze_core.observability.AuthenticatedUserMdcFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -35,7 +36,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             CoreUserProvisioningFilter coreUserProvisioningFilter,
-            RequestCorrelationFilter requestCorrelationFilter
+            RequestCorrelationFilter requestCorrelationFilter,
+            AuthenticatedUserMdcFilter authenticatedUserMdcFilter
     ) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -47,7 +49,8 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .addFilterAfter(requestCorrelationFilter, SecurityContextHolderFilter.class)
-                .addFilterAfter(coreUserProvisioningFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(authenticatedUserMdcFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(coreUserProvisioningFilter, AuthenticatedUserMdcFilter.class)
                 .build();
     }
 
@@ -56,6 +59,11 @@ public class SecurityConfig {
             @Value("${breeze.observability.instance-id}") String instanceId
     ) {
         return new RequestCorrelationFilter(instanceId);
+    }
+
+    @Bean
+    public AuthenticatedUserMdcFilter authenticatedUserMdcFilter() {
+        return new AuthenticatedUserMdcFilter();
     }
 
     @Bean

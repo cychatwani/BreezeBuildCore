@@ -55,3 +55,35 @@ dependencyManagement {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+fun localEnvironmentValue(name: String): String? {
+	val environmentFile = file(".env")
+
+	if (!environmentFile.isFile) {
+		return null
+	}
+
+	return environmentFile.useLines { lines ->
+		lines.map(String::trim)
+			.firstOrNull { it.startsWith("$name=") }
+			?.substringAfter('=')
+			?.trim()
+			?.takeIf(String::isNotBlank)
+	}
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	val newRelicAgentJar = layout.projectDirectory.file("observability/newrelic/newrelic.jar").asFile
+	val newRelicConfiguration = layout.projectDirectory.file("observability/newrelic/newrelic.yml").asFile
+
+	if (newRelicAgentJar.isFile && newRelicConfiguration.isFile) {
+		jvmArgs(
+			"-javaagent:${newRelicAgentJar.absolutePath}",
+			"-Dnewrelic.config.file=${newRelicConfiguration.absolutePath}"
+		)
+	}
+
+	localEnvironmentValue("NEW_RELIC_LICENSE_KEY")?.let { licenseKey ->
+		environment("NEW_RELIC_LICENSE_KEY", licenseKey)
+	}
+}

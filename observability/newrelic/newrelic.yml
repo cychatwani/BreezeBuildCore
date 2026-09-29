@@ -1,0 +1,25 @@
+common:
+  app_name: Breeze Core (local)
+  license_key: ''
+  agent_enabled: true
+  log_level: info
+  log_file_path: logs
+  distributed_tracing:
+    enabled: false
+  application_logging:
+    forwarding:
+      enabled: true
+      context_data:
+        enabled: true
+        include:
+          - requestId
+          - instanceId
+          - clerkUserId
+          - httpMethod
+          - httpPath
+          - httpStatus
+          - requestDurationMs
+    local_decorating:
+      enabled: false
+    metrics:
+      enabled: false
