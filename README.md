@@ -43,13 +43,11 @@ CLERK_ALLOWED_AUTHORIZED_PARTIES=http://localhost:3000
 
 ## Observability stack
 
-### New Relic infrastructure and logs
-
-This Windows machine has the New Relic Infrastructure Agent and Logs Integration installed. They provide host-level metrics and can collect configured local log files.
+Breeze Core uses New Relic for infrastructure monitoring, log collection, and Java APM.
 
 ### New Relic Java APM agent
 
-The local Java agent is installed under `observability/newrelic/`:
+The Java agent is available under `observability/newrelic/`:
 
 - `newrelic.jar` is the New Relic Java agent and is intentionally ignored by Git.
 - `newrelic.yml` is versioned, contains no secret, and currently disables agent-side log forwarding and distributed tracing.
@@ -65,4 +63,4 @@ java -javaagent:observability/newrelic/newrelic.jar `
   -jar build/libs/breeze-core-0.0.1-SNAPSHOT.jar
 ```
 
-The New Relic Java agent is installed locally but is not yet automatically attached to `bootRun`.
+The New Relic Java agent is not yet automatically attached to `bootRun`.
