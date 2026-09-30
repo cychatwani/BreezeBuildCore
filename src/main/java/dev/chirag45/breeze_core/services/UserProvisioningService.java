@@ -2,6 +2,7 @@ package dev.chirag45.breeze_core.services;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 import dev.chirag45.breeze_core.entities.UserEntity;
+import dev.chirag45.breeze_core.outbox.OutboxStore;
 import dev.chirag45.breeze_core.repository.UserRepository;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -22,13 +23,16 @@ public class UserProvisioningService {
     private static final Logger log = LoggerFactory.getLogger(UserProvisioningService.class);
 
     private final UserRepository userRepository;
+    private final OutboxStore outboxStore;
     private final TransactionTemplate transactionTemplate;
 
     public UserProvisioningService(
             UserRepository userRepository,
+            OutboxStore outboxStore,
             PlatformTransactionManager transactionManager
     ) {
         this.userRepository = userRepository;
+        this.outboxStore = outboxStore;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -53,10 +57,13 @@ public class UserProvisioningService {
                     log.debug("user_provisioning_upsert_completed");
                     log.trace("user_provisioning_user_lookup_started");
 
-                    return userRepository.findByClerkUserId(clerkUserId)
+                    UserEntity user = userRepository.findByClerkUserId(clerkUserId)
                             .orElseThrow(() -> new IllegalStateException(
                                     "User was not available after a successful provisioning upsert."
                             ));
+                    outboxStore.requestInitialProfileSync(user.getId());
+                    log.debug("user_profile_sync_requested userId={}", user.getId());
+                    return user;
                 }));
             } catch (DataIntegrityViolationException exception) {
                 if (!isUsersPrimaryKeyViolation(exception)) {

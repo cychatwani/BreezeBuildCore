@@ -13,6 +13,13 @@ breeze:
   observability:
     instance-id: ${BREEZE_INSTANCE_ID:local}
   clerk:
+    secret-key: ${CLERK_SECRET_KEY:}
     issuer-uri: ${CLERK_ISSUER_URI}
     jwk-set-uri: ${CLERK_JWK_SET_URI}
     allowed-authorized-parties: ${CLERK_ALLOWED_AUTHORIZED_PARTIES}
+  outbox:
+    worker-threads: ${BREEZE_OUTBOX_WORKER_THREADS:1}
+    poll-interval-ms: ${BREEZE_OUTBOX_POLL_INTERVAL_MS:1000}
+    lease-seconds: ${BREEZE_OUTBOX_LEASE_SECONDS:60}
+    max-attempts: ${BREEZE_OUTBOX_MAX_ATTEMPTS:5}
+    retry-base-seconds: ${BREEZE_OUTBOX_RETRY_BASE_SECONDS:5}

@@ -1,0 +1,133 @@
+package dev.chirag45.breeze_core.outbox;
+
+import com.github.f4b6a3.uuid.UuidCreator;
+import dev.chirag45.breeze_core.dto.translation.ProfileSnapshot;
+import dev.chirag45.breeze_core.repository.UserRepository;
+import com.clerk.backend_api.models.errors.ClerkError;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
+import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+public class OutboxWorker {
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxWorker.class);
+
+    private final OutboxStore store;
+    private final UserRepository users;
+    private final ClerkProfileClient clerk;
+    private final ThreadPoolBulkhead bulkhead;
+    private final OutboxProperties properties;
+    private final String instanceId;
+    private boolean missingKeyLogged;
+
+    public OutboxWorker(
+            OutboxStore store,
+            UserRepository users,
+            ClerkProfileClient clerk,
+            ThreadPoolBulkhead bulkhead,
+            OutboxProperties properties,
+            @Value("${breeze.observability.instance-id:local}") String instanceId
+    ) {
+        this.store = store;
+        this.users = users;
+        this.clerk = clerk;
+        this.bulkhead = bulkhead;
+        this.properties = properties;
+        this.instanceId = instanceId;
+    }
+
+    @Scheduled(fixedDelayString = "${breeze.outbox.poll-interval-ms:1000}")
+    public void poll() {
+        if (!clerk.isConfigured()) {
+            if (!missingKeyLogged) {
+                log.warn("outbox_worker_paused reason=clerk_secret_key_missing");
+                missingKeyLogged = true;
+            }
+            return;
+        }
+
+        for (int slot = 0; slot < properties.getWorkerThreads(); slot++) {
+            try {
+                bulkhead.executeRunnable(() -> {
+                    try {
+                        claimAndProcess();
+                    } finally {
+                        MDC.clear();
+                    }
+                });
+            } catch (BulkheadFullException ignored) {
+                // No in-memory queue: unclaimed work remains in PostgreSQL for the next poll.
+                return;
+            } catch (RuntimeException exception) {
+                log.error("outbox_poll_failed exceptionType={}", exception.getClass().getSimpleName(), exception);
+                return;
+            }
+        }
+    }
+
+    private void claimAndProcess() {
+        try {
+            String token = instanceId + ":" + UuidCreator.getTimeOrderedEpoch();
+            store.claim(token, properties.getLeaseSeconds(), properties.getMaxAttempts())
+                    .ifPresent(this::process);
+        } catch (RuntimeException exception) {
+            log.error("outbox_claim_failed exceptionType={}", exception.getClass().getSimpleName(), exception);
+        }
+    }
+
+    private void process(OutboxStore.Claim claim) {
+        MDC.put("instanceId", instanceId);
+        MDC.put("outboxEventId", claim.eventId().toString());
+        MDC.put("userId", claim.userId().toString());
+        if (claim.requestId() != null) {
+            MDC.put("requestId", claim.requestId());
+        }
+        log.debug("outbox_profile_sync_started attempt={}", claim.attempts());
+
+        try {
+            if (claim.attempts() > properties.getMaxAttempts()) {
+                fail(claim, "LEASE_EXPIRED");
+                return;
+            }
+            var user = users.findById(claim.userId());
+            if (user.isEmpty()) {
+                store.complete(claim, new ProfileSnapshot(null, null, null));
+                log.info("outbox_profile_sync_skipped reason=user_missing");
+                return;
+            }
+            MDC.put("clerkUserId", user.get().getClerkUserId());
+            ProfileSnapshot profile = clerk.fetch(user.get().getClerkUserId());
+            if (store.complete(claim, profile)) {
+                log.info("outbox_profile_sync_completed");
+            } else {
+                log.warn("outbox_profile_sync_claim_lost");
+            }
+        } catch (Exception exception) {
+            String code = exception instanceof ClerkError clerkError
+                    ? "CLERK_HTTP_" + clerkError.code()
+                    : exception.getClass().getSimpleName();
+            fail(claim, code);
+        }
+    }
+
+    private void fail(OutboxStore.Claim claim, String code) {
+        int exponent = Math.min(claim.attempts() - 1, 10);
+        int delay = (int) Math.min((long) properties.getRetryBaseSeconds() * (1L << exponent), 3600L);
+        if (store.fail(claim, code, properties.getMaxAttempts(), delay)) {
+            if (claim.attempts() >= properties.getMaxAttempts()) {
+                log.error("outbox_profile_sync_dead errorCode={} attempts={}", code, claim.attempts());
+            } else {
+                log.warn("outbox_profile_sync_retry_scheduled errorCode={} attempt={} delaySeconds={}",
+                        code, claim.attempts(), delay);
+            }
+        } else {
+            log.warn("outbox_profile_sync_claim_lost");
+        }
+    }
+}
