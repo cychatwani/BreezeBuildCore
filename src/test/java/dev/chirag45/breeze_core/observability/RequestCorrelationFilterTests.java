@@ -1,5 +1,6 @@
 package dev.chirag45.breeze_core.observability;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class RequestCorrelationFilterTests {
 
     @Test
     void propagatesValidInboundRequestIdAndBindsRequestContextDuringFilterChain() throws Exception {
-        String requestId = UUID.randomUUID().toString();
+        String requestId = UuidCreator.getTimeOrderedEpoch().toString();
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users/provision");
         MockHttpServletResponse response = new MockHttpServletResponse();
         request.addHeader(RequestCorrelationFilter.REQUEST_ID_HEADER, requestId);
@@ -51,11 +52,25 @@ class RequestCorrelationFilterTests {
 
         String responseRequestId = response.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER);
         assertThat(responseRequestId).isNotBlank();
-        assertThatCodeCanBeParsedAsUuid(responseRequestId);
+        assertThat(responseRequestId).matches(RequestCorrelationFilterTests::isUuidV7);
         assertThat(MDC.getCopyOfContextMap()).isNull();
     }
 
-    private void assertThatCodeCanBeParsedAsUuid(String requestId) {
-        UUID.fromString(requestId);
+    @Test
+    void replacesInboundUuidThatIsNotVersion7() throws Exception {
+        String inboundV4RequestId = UUID.randomUUID().toString();
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/provision");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader(RequestCorrelationFilter.REQUEST_ID_HEADER, inboundV4RequestId);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        String responseRequestId = response.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER);
+        assertThat(responseRequestId).isNotEqualTo(inboundV4RequestId);
+        assertThat(responseRequestId).matches(RequestCorrelationFilterTests::isUuidV7);
+    }
+
+    private static boolean isUuidV7(String requestId) {
+        return UUID.fromString(requestId).version() == 7;
     }
 }

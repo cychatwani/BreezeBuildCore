@@ -1,5 +1,6 @@
 package dev.chirag45.breeze_core.observability;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -69,14 +70,22 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     private String resolveRequestId(String requestIdHeader) {
         if (requestIdHeader == null || requestIdHeader.isBlank()) {
-            return UUID.randomUUID().toString();
+            return newRequestId();
         }
 
         try {
-            return UUID.fromString(requestIdHeader).toString();
+            UUID requestId = UUID.fromString(requestIdHeader);
+            return requestId.version() == 7
+                    && requestId.toString().equalsIgnoreCase(requestIdHeader)
+                    ? requestId.toString()
+                    : newRequestId();
         } catch (IllegalArgumentException ignored) {
-            return UUID.randomUUID().toString();
+            return newRequestId();
         }
+    }
+
+    private String newRequestId() {
+        return UuidCreator.getTimeOrderedEpoch().toString();
     }
 
     private void addAuthenticatedClerkUserIdToMdc() {

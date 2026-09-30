@@ -36,6 +36,7 @@ Do not collapse these boundaries without an explicit request. During early local
 - Use typed enums and value types instead of unvalidated strings where practical.
 - Use `Instant` for persisted timestamps and PostgreSQL `timestamptz` in migrations.
 - Use UUID primary keys unless a feature explicitly requires another identifier strategy.
+- Every BreezeBuild-generated UUID, including database IDs, outbox IDs, and `X-Request-ID` correlation IDs, must be UUIDv7. Never use `UUID.randomUUID()` for a BreezeBuild-generated identifier. Accept an inbound correlation ID only when it is a valid UUIDv7; otherwise replace it with a new UUIDv7. External identifiers such as Clerk user IDs are not subject to this rule.
 - Keep database and Java names explicit when ambiguity would make a migration or query harder to review.
 
 ## Authentication and local users

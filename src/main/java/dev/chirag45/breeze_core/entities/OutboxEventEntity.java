@@ -1,13 +1,12 @@
 package dev.chirag45.breeze_core.entities;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import dev.chirag45.breeze_core.enums.outbox.OutboxEventStatus;
 import dev.chirag45.breeze_core.enums.outbox.OutboxEventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
@@ -39,7 +38,6 @@ import java.util.UUID;
 public class OutboxEventEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Enumerated(EnumType.STRING)
@@ -96,6 +94,9 @@ public class OutboxEventEntity {
 
     @PrePersist
     void onCreate() {
+        if (id == null) {
+            id = UuidCreator.getTimeOrderedEpoch();
+        }
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
