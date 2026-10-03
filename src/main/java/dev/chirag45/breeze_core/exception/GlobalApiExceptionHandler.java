@@ -20,6 +20,16 @@ public class GlobalApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalApiExceptionHandler.class);
 
+    @ExceptionHandler(CoreUserNotProvisionedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCoreUserNotProvisioned(CoreUserNotProvisionedException exception) {
+        return error(HttpStatus.PRECONDITION_REQUIRED, exception.getMessage(), "CORE_USER_NOT_PROVISIONED");
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProjectNotFound(ProjectNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, exception.getMessage(), "PROJECT_NOT_FOUND");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
         log.debug("request_validation_failed");

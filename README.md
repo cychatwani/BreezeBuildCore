@@ -8,6 +8,27 @@ check is read-only: it returns `204` for a provisioned user or the standard
 `CORE_USER_NOT_PROVISIONED` error (`428`) otherwise. Both endpoints require a valid
 Clerk session JWT; the user ID comes from the verified token.
 
+## Projects
+
+Core stores project metadata. All project endpoints require a Clerk session JWT and
+use its verified `sub` claim to scope access to the owning user. A project owned by
+another user is returned as `PROJECT_NOT_FOUND` (`404`). Project creation does not
+create a source-code workspace yet; that belongs to Breeze Workspace.
+
+| Method | Path | Action |
+| --- | --- | --- |
+| `POST` | `/api/projects` | Create (`201`) |
+| `GET` | `/api/projects` | List your projects |
+| `GET` | `/api/projects/{projectId}` | Read one project |
+| `PUT` | `/api/projects/{projectId}` | Replace name and description |
+| `DELETE` | `/api/projects/{projectId}` | Delete (`204`) |
+
+Create and update accept a required `name` (up to 255 characters) and optional
+`description` (up to 2000 characters). Delete currently removes Core metadata;
+cross-service cleanup will be coordinated when Workspace project creation exists.
+`workSpaceInitializedOn` is read-only and remains null until Workspace creation is
+confirmed through the future Temporal workflow.
+
 ## Stack
 
 - Java 21
