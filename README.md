@@ -2,6 +2,12 @@
 
 Breeze Core is the standalone Spring Boot Core Platform service for BreezeBuild.
 
+Next.js calls `POST /api/users/provision` to provision the authenticated Clerk user and
+`GET /api/users/provisioned` to check whether that user already exists in Core. The
+check is read-only: it returns `204` for a provisioned user or the standard
+`CORE_USER_NOT_PROVISIONED` error (`428`) otherwise. Both endpoints require a valid
+Clerk session JWT; the user ID comes from the verified token.
+
 ## Stack
 
 - Java 21

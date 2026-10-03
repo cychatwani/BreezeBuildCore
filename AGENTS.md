@@ -14,13 +14,14 @@ Each BreezeBuild service has its own Git repository and build, with independent 
 ## Current platform context
 
 - The browser application is a Next.js/React browser IDE.
-- Browser traffic should eventually enter through a Spring Boot API Gateway/BFF.
+- Next.js Route Handlers are the browser-facing API layer. No standalone API Gateway is planned.
 - `breeze-core` owns platform metadata such as users, projects, GitHub connections, and approvals.
 - Breeze Workspace owns each project's source-code workspace, Spring Boot project generation, files, and revisions. Builds and local/preview execution are later Workspace responsibilities.
 - The Agentic service will use Workspace APIs to inspect and modify code. Temporal will orchestrate long-running flows such as project initialization.
 - BreezeBuild is intentionally polyglot. Use the technology appropriate to each architectural component rather than copying SplitEasy's Java-only approach.
 - The Agentic service is a separate Python/FastAPI service intended for LangGraph, tools, RAG/context, and LLM routing.
-- The API Gateway/BFF, Core Platform, and Workspace are Java/Spring Boot services.
+- Core Platform and Workspace are separate Java/Spring Boot services.
+- Core alone provisions local users. Its authenticated `/api/users/provisioned` endpoint checks whether the Clerk subject exists locally; Next.js uses it before other protected browser API requests.
 - Other architectural components remain in their own repositories unless the user explicitly changes that decision.
 - PostgreSQL is the Core Platform system of record.
 - Billing is out of scope for now.

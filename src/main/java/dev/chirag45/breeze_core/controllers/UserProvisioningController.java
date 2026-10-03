@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,12 @@ public class UserProvisioningController {
 
     public UserProvisioningController(UserProvisioningService userProvisioningService) {
         this.userProvisioningService = userProvisioningService;
+    }
+
+    @GetMapping("/provisioned")
+    public ResponseEntity<Void> provisioned() {
+        // CoreUserProvisioningFilter checks the authenticated Clerk subject first.
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/provision")
