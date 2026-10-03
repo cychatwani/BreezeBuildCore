@@ -9,6 +9,7 @@ The SplitEasy project at `../SplitEasy/core` (relative to the BreezeBuild reposi
 This project is at an early stage. Implement only the layer and behavior requested. Do not create speculative abstractions, services, repositories, endpoints, or infrastructure.
 
 `breeze-core` is a standalone Spring Boot application and a standalone Gradle build. It is not a composite build or a multi-module build. Do not restructure it to resemble SplitEasy's build layout.
+Each BreezeBuild service has its own Git repository, build, tests, configuration, and deployment. Cross-service API contracts should be explicit and verified when a feature spans repositories.
 
 ## Current platform context
 
@@ -18,7 +19,7 @@ This project is at an early stage. Implement only the layer and behavior request
 - BreezeBuild is intentionally polyglot. Use the technology appropriate to each architectural component rather than copying SplitEasy's Java-only approach.
 - The Agent Runtime is a separate Python/FastAPI service intended for LangGraph, tools, RAG/context, and LLM routing.
 - The API Gateway/BFF, Core Platform, and Build/Preview Orchestrator are Java/Spring Boot services.
-- Other architectural components remain outside this `breeze-core` repository unless explicitly added later.
+- Other architectural components remain in their own repositories unless the user explicitly changes that decision.
 - PostgreSQL is the Core Platform system of record.
 - Billing is out of scope for now.
 
